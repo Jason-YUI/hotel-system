@@ -1,0 +1,216 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 模型定义 - 酒店管理系统
+
+// 用户表（系统用户和员工）
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  role      Role     @default(EMPLOYEE)
+  name      String
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// 客人表
+model Guest {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?  @unique
+  phone     String?
+  address   String?
+  idCard    String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 关联关系
+  bookings  Booking[]
+  orders    Order[]
+
+  @@map("guests")
+}
+
+// 房间类型表
+model RoomType {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  capacity    Int
+  beds        Int      @default(1)
+  amenities   String[] // JSON 数组存储设施列表
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 关联关系
+  rooms       Room[]
+
+  @@map("room_types")
+}
+
+// 房间表
+model Room {
+  id          String      @id @default(cuid())
+  number      String      @unique
+  floor       Int
+  status      RoomStatus  @default(AVAILABLE)
+  roomTypeId  String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // 关联关系
+  roomType    RoomType    @relation(fields: [roomTypeId], references: [id])
+  orders      Order[]
+  services    RoomService[]
+
+  @@map("rooms")
+}
+
+// 预订表
+model Booking {
+  id               String        @id @default(cuid())
+  guestId          String
+  roomTypeId       String
+  checkInDate      DateTime
+  checkOutDate     DateTime
+  adults           Int           @default(1)
+  children         Int           @default(0)
+  totalPrice       Float
+  status           BookingStatus @default(PENDING)
+  specialRequests  String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  // 关联关系
+  guest            Guest         @relation(fields: [guestId], references: [id])
+  orders           Order[]
+
+  @@map("bookings")
+}
+
+// 订单表（入住记录）
+model Order {
+  id            String      @id @default(cuid())
+  bookingId     String
+  guestId       String
+  roomNumber    String
+  checkInTime   DateTime?
+  checkOutTime  DateTime?
+  totalPrice     Float
+  status        OrderStatus @default(REGISTERED)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // 关联关系
+  booking       Booking     @relation(fields: [bookingId], references: [id])
+  guest         Guest       @relation(fields: [guestId], references: [id])
+  room          Room        @relation(fields: [roomNumber], references: [number])
+  payments      Payment[]
+  services      RoomService[]
+
+  @@map("orders")
+}
+
+// 支付记录表
+model Payment {
+  id             String       @id @default(cuid())
+  orderId        String
+  amount         Float
+  method         PaymentMethod
+  status         PaymentStatus @default(PENDING)
+  transactionId  String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // 关联关系
+  order          Order        @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+// 房间服务记录表
+model RoomService {
+  id            String         @id @default(cuid())
+  orderId       String?
+  roomId        String
+  serviceType   String
+  description   String
+  price         Float
+  status        ServiceStatus  @default(PENDING)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  // 关联关系
+  order         Order?         @relation(fields: [orderId], references: [id])
+  room          Room           @relation(fields: [roomId], references: [number])
+
+  @@map("room_services")
+}
+
+// 枚举定义
+enum Role {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  MAINTENANCE
+  CLEANING
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  CHECKED_IN
+  CHECKED_OUT
+  NO_SHOW
+}
+
+enum OrderStatus {
+  REGISTERED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  ALIPAY
+  WECHAT_PAY
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+  CANCELLED
+}
+
+enum ServiceStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
