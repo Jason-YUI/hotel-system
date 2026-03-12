@@ -40,3 +40,10 @@ coverage/
 # CRA misc
 .pnp
 .pnp.js
+
+# Claude Code
+.claude/
+
+# Database
+apps/backend/prisma/dev.db
+apps/backend/prisma/dev.db-journal
