@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 // 模型定义 - 酒店管理系统
@@ -18,7 +18,7 @@ model User {
   username  String   @unique
   email     String   @unique
   password  String
-  role      Role     @default(EMPLOYEE)
+  role      String   @default("EMPLOYEE")
   name      String
   phone     String?
   createdAt DateTime @default(now())
@@ -38,7 +38,6 @@ model Guest {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // 关联关系
   bookings  Booking[]
   orders    Order[]
 
@@ -53,51 +52,49 @@ model RoomType {
   price       Float
   capacity    Int
   beds        Int      @default(1)
-  amenities   String[] // JSON 数组存储设施列表
+  amenities   String   // JSON 字符串存储设施列表
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // 关联关系
   rooms       Room[]
+  bookings    Booking[]
 
   @@map("room_types")
 }
 
 // 房间表
 model Room {
-  id          String      @id @default(cuid())
-  number      String      @unique
+  id          String   @id @default(cuid())
+  number      String   @unique
   floor       Int
-  status      RoomStatus  @default(AVAILABLE)
+  status      String   @default("AVAILABLE")
   roomTypeId  String
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  // 关联关系
-  roomType    RoomType    @relation(fields: [roomTypeId], references: [id])
+  roomType    RoomType @relation(fields: [roomTypeId], references: [id])
   orders      Order[]
-  services    RoomService[]
 
   @@map("rooms")
 }
 
 // 预订表
 model Booking {
-  id               String        @id @default(cuid())
+  id               String   @id @default(cuid())
   guestId          String
   roomTypeId       String
   checkInDate      DateTime
   checkOutDate     DateTime
-  adults           Int           @default(1)
-  children         Int           @default(0)
+  adults           Int      @default(1)
+  children         Int      @default(0)
   totalPrice       Float
-  status           BookingStatus @default(PENDING)
+  status           String   @default("PENDING")
   specialRequests  String?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  // 关联关系
-  guest            Guest         @relation(fields: [guestId], references: [id])
+  guest            Guest    @relation(fields: [guestId], references: [id])
+  roomType         RoomType @relation(fields: [roomTypeId], references: [id])
   orders           Order[]
 
   @@map("bookings")
@@ -105,112 +102,20 @@ model Booking {
 
 // 订单表（入住记录）
 model Order {
-  id            String      @id @default(cuid())
+  id            String    @id @default(cuid())
   bookingId     String
   guestId       String
   roomNumber    String
   checkInTime   DateTime?
   checkOutTime  DateTime?
-  totalPrice     Float
-  status        OrderStatus @default(REGISTERED)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  totalPrice    Float
+  status        String    @default("REGISTERED")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  // 关联关系
-  booking       Booking     @relation(fields: [bookingId], references: [id])
-  guest         Guest       @relation(fields: [guestId], references: [id])
-  room          Room        @relation(fields: [roomNumber], references: [number])
-  payments      Payment[]
-  services      RoomService[]
+  booking       Booking   @relation(fields: [bookingId], references: [id])
+  guest         Guest     @relation(fields: [guestId], references: [id])
+  room          Room      @relation(fields: [roomNumber], references: [number])
 
   @@map("orders")
-}
-
-// 支付记录表
-model Payment {
-  id             String       @id @default(cuid())
-  orderId        String
-  amount         Float
-  method         PaymentMethod
-  status         PaymentStatus @default(PENDING)
-  transactionId  String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-
-  // 关联关系
-  order          Order        @relation(fields: [orderId], references: [id])
-
-  @@map("payments")
-}
-
-// 房间服务记录表
-model RoomService {
-  id            String         @id @default(cuid())
-  orderId       String?
-  roomId        String
-  serviceType   String
-  description   String
-  price         Float
-  status        ServiceStatus  @default(PENDING)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-
-  // 关联关系
-  order         Order?         @relation(fields: [orderId], references: [id])
-  room          Room           @relation(fields: [roomId], references: [number])
-
-  @@map("room_services")
-}
-
-// 枚举定义
-enum Role {
-  ADMIN
-  MANAGER
-  EMPLOYEE
-}
-
-enum RoomStatus {
-  AVAILABLE
-  OCCUPIED
-  RESERVED
-  MAINTENANCE
-  CLEANING
-}
-
-enum BookingStatus {
-  PENDING
-  CONFIRMED
-  CANCELLED
-  CHECKED_IN
-  CHECKED_OUT
-  NO_SHOW
-}
-
-enum OrderStatus {
-  REGISTERED
-  CHECKED_IN
-  CHECKED_OUT
-  CANCELLED
-}
-
-enum PaymentMethod {
-  CASH
-  CREDIT_CARD
-  ALIPAY
-  WECHAT_PAY
-  BANK_TRANSFER
-}
-
-enum PaymentStatus {
-  PENDING
-  PAID
-  REFUNDED
-  CANCELLED
-}
-
-enum ServiceStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
 }
